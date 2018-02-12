@@ -35,21 +35,22 @@ defmodule ExTrans.Base do
     case HTTPoison.post(url, data, headers) do
       {:ok, body} ->
         body
-          |> handle_response(method)
-          |> unwrap_msg
+          |> handle_response({method, args})
       err ->
         err
     end
   end
 
-  def handle_response(resp = %HTTPoison.Response{status_code: 409}, mthd) do
+  def handle_response(resp = %HTTPoison.Response{status_code: 409}, {mthd, args}) do
     token = get_csrf(resp)
     :ets.insert(:extrans, {@csrf_header, token})
-    call(mthd)
+    call(mthd, args)
   end
 
   def handle_response(%HTTPoison.Response{status_code: 200, body: body}, _) do
-    Poison.decode! body
+    body
+      |> Poison.decode! 
+      |> unwrap_msg
   end
 
   def unwrap_msg(msg = %{"result" => "success"}) do
