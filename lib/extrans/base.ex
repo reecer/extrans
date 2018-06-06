@@ -1,6 +1,5 @@
 defmodule ExTrans.Base do
-  import HTTPoison
-  import Poison
+  require Logger
 
   @csrf_header "X-Transmission-Session-Id"
 
@@ -15,7 +14,7 @@ defmodule ExTrans.Base do
         [] -> ""
       end
     rescue
-      e in ArgumentError -> 
+      _err in ArgumentError -> 
         :ets.new(:extrans, [:named_table])
         ""
     end
@@ -25,12 +24,14 @@ defmodule ExTrans.Base do
     call(method, %{})
   end
 
-  def call(method, args = %{}) do
+  def call(method, args \\ %{}) do
     headers = [{@csrf_header, csrf_token()}]
     data = %{
       "method" => method,
       "arguments" => args,
     } |> Poison.encode!
+
+    Logger.info "Calling #{url} with #{inspect(data)}"
 
     case HTTPoison.post(url, data, headers) do
       {:ok, body} ->
@@ -44,6 +45,8 @@ defmodule ExTrans.Base do
   def handle_response(resp = %HTTPoison.Response{status_code: 409}, {mthd, args}) do
     token = get_csrf(resp)
     :ets.insert(:extrans, {@csrf_header, token})
+
+    Logger.info "Retrieved CSRF (#{token}). Recalling..."
     call(mthd, args)
   end
 

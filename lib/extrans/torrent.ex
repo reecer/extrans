@@ -37,7 +37,7 @@ defmodule ExTrans.Torrent do
     get(@fields)
   end
 
-  def add(url, args) do
+  def add(url, args \\ %{}) do
     Base.call("torrent-add", Map.merge(%{"filename" => url}, args))
   end
 
